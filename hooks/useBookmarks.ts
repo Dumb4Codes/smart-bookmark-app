@@ -1,69 +1,57 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Bookmark } from "@/lib/types";
-import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { Bookmark } from '@/lib/types'
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
 export function useBookmarks() {
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
 
   useEffect(() => {
     // Fetch initial bookmarks
     async function fetchBookmarks() {
       const { data, error } = await supabase
-        .from("bookmarks")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .from('bookmarks')
+        .select('*')
+        .order('created_at', { ascending: false })
 
       if (!error && data) {
-        setBookmarks(data);
+        setBookmarks(data)
       }
-      setLoading(false);
+      setLoading(false)
     }
 
-    fetchBookmarks();
+    fetchBookmarks()
 
     // Subscribe to realtime changes
     const channel = supabase
-      .channel("bookmarks-changes")
+      .channel('bookmarks-changes')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "*",
-          schema: "public",
-          table: "bookmarks",
+          event: '*',
+          schema: 'public',
+          table: 'bookmarks',
         },
         (payload: RealtimePostgresChangesPayload<Bookmark>) => {
-          if (payload.eventType === "INSERT") {
-            const newBookmark = payload.new as Bookmark;
-            setBookmarks((current) => {
-              // Remove any temporary optimistic bookmarks
-              const withoutTemp = current.filter(
-                (b) => !b.id.startsWith("temp-"),
-              );
-              // Check if bookmark already exists (avoid duplicates)
-              const exists = withoutTemp.some((b) => b.id === newBookmark.id);
-              if (exists) return withoutTemp;
-              // Add the new bookmark
-              return [newBookmark, ...withoutTemp];
-            });
-          } else if (payload.eventType === "DELETE") {
-            const oldBookmark = payload.old as Bookmark;
+          if (payload.eventType === 'INSERT') {
+            setBookmarks((current) => [payload.new as Bookmark, ...current])
+          } else if (payload.eventType === 'DELETE') {
             setBookmarks((current) =>
-              current.filter((bookmark) => bookmark.id !== oldBookmark.id),
-            );
+              current.filter((bookmark) => bookmark.id !== payload.old.id)
+            )
           }
-        },
+        }
       )
-      .subscribe();
+      .subscribe()
 
     return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
+      supabase.removeChannel(channel)
+    }
+  }, [supabase])
 
-  return { bookmarks, loading, setBookmarks };
+  return { bookmarks, loading, setBookmarks }
 }
