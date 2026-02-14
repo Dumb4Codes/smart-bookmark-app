@@ -11,20 +11,8 @@ export function useBookmarks() {
   const supabase = createClient();
 
   useEffect(() => {
-    let userId: string | null = null;
-
-    // Fetch initial bookmarks and get user ID
+    // Fetch initial bookmarks
     async function fetchBookmarks() {
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      userId = user.id;
-
       const { data, error } = await supabase
         .from("bookmarks")
         .select("*")
@@ -38,45 +26,36 @@ export function useBookmarks() {
 
     fetchBookmarks();
 
-    // Subscribe to realtime changes - filter by user_id
+    // Subscribe to realtime changes
     const channel = supabase
       .channel("bookmarks-changes")
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "bookmarks",
         },
         (payload: RealtimePostgresChangesPayload<Bookmark>) => {
-          const newBookmark = payload.new as Bookmark;
-          // Only add if it belongs to current user
-          if (userId && newBookmark.user_id === userId) {
+          if (payload.eventType === "INSERT") {
+            const newBookmark = payload.new as Bookmark;
             setBookmarks((current) => {
               // Remove any temporary optimistic bookmarks
               const withoutTemp = current.filter(
                 (b) => !b.id.startsWith("temp-"),
               );
-              // Add the new bookmark if it doesn't already exist
+              // Check if bookmark already exists (avoid duplicates)
               const exists = withoutTemp.some((b) => b.id === newBookmark.id);
               if (exists) return withoutTemp;
+              // Add the new bookmark
               return [newBookmark, ...withoutTemp];
             });
+          } else if (payload.eventType === "DELETE") {
+            const oldBookmark = payload.old as Bookmark;
+            setBookmarks((current) =>
+              current.filter((bookmark) => bookmark.id !== oldBookmark.id),
+            );
           }
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "bookmarks",
-        },
-        (payload: RealtimePostgresChangesPayload<Bookmark>) => {
-          const deletedId = (payload.old as Bookmark).id;
-          setBookmarks((current) =>
-            current.filter((bookmark) => bookmark.id !== deletedId),
-          );
         },
       )
       .subscribe();
