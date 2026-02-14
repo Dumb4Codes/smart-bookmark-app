@@ -8,14 +8,12 @@ interface BookmarkCardProps {
   bookmark: Bookmark
   onDelete: (message: string) => void
   onError: (message: string) => void
-  onOptimisticDelete: (id: string) => void
 }
 
 export function BookmarkCard({
   bookmark,
   onDelete,
   onError,
-  onOptimisticDelete,
 }: BookmarkCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -25,7 +23,6 @@ export function BookmarkCard({
     if (!confirm('Are you sure you want to delete this bookmark?')) return
 
     setIsDeleting(true)
-    onOptimisticDelete(bookmark.id)
 
     try {
       const { error } = await supabase.from('bookmarks').delete().eq('id', bookmark.id)
@@ -64,7 +61,10 @@ export function BookmarkCard({
     <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-5 border border-gray-100 animate-fade-in">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 mb-2 truncate">{bookmark.title}</h3>
+          <h3 className="font-semibold text-gray-900 mb-2 truncate">
+            {bookmark.title}
+          </h3>
+
           <a
             href={bookmark.url}
             target="_blank"
@@ -73,8 +73,12 @@ export function BookmarkCard({
           >
             {bookmark.url}
           </a>
-          <p className="text-xs text-gray-500 mt-3">{formatDate(bookmark.created_at)}</p>
+
+          <p className="text-xs text-gray-500 mt-3">
+            {formatDate(bookmark.created_at)}
+          </p>
         </div>
+
         <div className="flex gap-2">
           <button
             onClick={handleCopyUrl}
@@ -82,11 +86,26 @@ export function BookmarkCard({
             title="Copy URL"
           >
             {copied ? (
-              <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-5 h-5 text-green-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             ) : (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -102,7 +121,12 @@ export function BookmarkCard({
             className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
             title="Delete bookmark"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -114,5 +138,5 @@ export function BookmarkCard({
         </div>
       </div>
     </div>
-  )
+  );
 }
