@@ -262,6 +262,151 @@ Fully responsive with Tailwind CSS:
 - Optimized for all screen sizes
 - Touch-friendly buttons and inputs
 
+## 🔧 Challenges & Solutions
+
+During development, I encountered and solved several interesting challenges:
+
+### 1. Dark Mode Input Text Visibility 🌗
+
+**Problem:** When users had their browser/system in dark mode, input text appeared white on white background, making it invisible.
+
+**Root Cause:** CSS `prefers-color-scheme: dark` was changing text color globally, affecting form inputs.
+
+**Solution:** Added explicit CSS rules in `globals.css` to force dark text in input fields regardless of color scheme:
+```css
+input[type="text"],
+input[type="url"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  color: rgb(17, 24, 39) !important; /* gray-900 */
+}
+```
+
+**Result:** Input fields remain readable in both light and dark modes.
+
+---
+
+### 2. Real-time Sync Working Only for DELETE, Not INSERT ⚡
+
+**Problem:** Bookmarks deleted in one tab would instantly disappear in other tabs, but newly added bookmarks wouldn't appear without refresh.
+
+**Root Cause:** The Supabase Realtime subscription wasn't filtering INSERT events by `user_id`, causing the events to be broadcast but not properly received by the client.
+
+**Solution:** 
+1. Moved user authentication check before setting up the subscription
+2. Added explicit `filter: 'user_id=eq.${user.id}'` to the INSERT event listener
+3. Separated INSERT and DELETE into individual `.on()` handlers
+
+**Code:**
+```typescript
+// Get user ID first
+const { data: { user } } = await supabase.auth.getUser();
+
+// Then set up filtered subscription
+channel = supabase
+  .channel("bookmarks-changes")
+  .on("postgres_changes", {
+    event: "INSERT",
+    schema: "public",
+    table: "bookmarks",
+    filter: `user_id=eq.${user.id}`, // Critical filter
+  }, handleInsert)
+  .subscribe();
+```
+
+**Result:** Real-time sync now works perfectly for both INSERT and DELETE operations.
+
+---
+
+### 3. Auth State Not Syncing Across Tabs 🔐
+
+**Problem:** When users signed out in one tab, other tabs remained logged in, potentially exposing private data.
+
+**Solution:** Created an `AuthSync` component that listens for auth state changes across all tabs using Supabase's `onAuthStateChange` listener:
+```typescript
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT' || !session) {
+    router.push('/')
+    router.refresh()
+  }
+})
+```
+
+**Result:** Signing out in any tab now automatically redirects all other tabs to the home page.
+
+---
+
+### 4. TypeScript Type Errors with Supabase Payload 🔤
+
+**Problem:** TypeScript errors when accessing `payload.old.id` in DELETE handlers:
+```
+Property 'id' does not exist on type '{} | Partial<Bookmark>'
+```
+
+**Solution:** Explicitly cast the payload types:
+```typescript
+const deletedId = (payload.old as Bookmark).id;
+// or
+const deletedBookmark = payload.old as Bookmark;
+```
+
+**Result:** Type safety maintained while eliminating compilation errors.
+
+---
+
+### 5. Mobile Responsiveness Issues 📱
+
+**Problem:** On small screens:
+- Email addresses in header would overflow
+- Bookmark cards had poor layout
+- Buttons were too close together
+
+**Solution:** 
+- Added responsive Tailwind classes: `sm:`, `md:`, `lg:` breakpoints
+- Implemented `truncate` and `max-w-[]` for text overflow
+- Changed layout from horizontal to vertical on mobile using `flex-col sm:flex-row`
+- Adjusted padding/spacing: `p-4 sm:p-5`, `gap-2 sm:gap-4`
+
+**Result:** Fully responsive design that works seamlessly on all device sizes.
+
+---
+
+### 6. Environment Variable Configuration 🔧
+
+**Problem:** Confusion about having different URLs for local development vs production (localhost vs Vercel URL).
+
+**Solution:** Clarified that:
+- `.env.local` (local) uses `http://localhost:3000`
+- Vercel environment variables (production) use production URL
+- This is standard practice and both are needed
+
+**Result:** Proper environment separation between development and production.
+
+---
+
+### 7. Supabase Publications for Realtime 📡
+
+**Problem:** Realtime wasn't working even with correct code because the `bookmarks` table wasn't added to the `supabase_realtime` publication.
+
+**Solution:** 
+1. Navigate to Database → Publications in Supabase Dashboard
+2. Click on `supabase_realtime`
+3. Manually add the `bookmarks` table
+4. Alternatively, run SQL: `ALTER PUBLICATION supabase_realtime ADD TABLE bookmarks;`
+
+**Result:** Realtime subscriptions started working immediately.
+
+---
+
+These challenges taught me the importance of:
+- Reading documentation carefully (especially Supabase Realtime filters)
+- Testing across different browser states (dark mode, multiple tabs)
+- Proper TypeScript typing for third-party libraries
+- Mobile-first responsive design
+- Environment-specific configurations
+
 ## 🔒 Security Features
 
 - ✅ Google OAuth 2.0 authentication
