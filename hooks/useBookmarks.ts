@@ -11,8 +11,20 @@ export function useBookmarks() {
   const supabase = createClient();
 
   useEffect(() => {
-    // Fetch initial bookmarks
-    async function fetchBookmarks() {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    async function setupRealtimeSubscription() {
+      // Get current user FIRST
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch initial bookmarks
       const { data, error } = await supabase
         .from("bookmarks")
         .select("*")
@@ -22,49 +34,52 @@ export function useBookmarks() {
         setBookmarks(data);
       }
       setLoading(false);
+
+      // Subscribe to realtime changes
+      channel = supabase
+        .channel("bookmarks-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "bookmarks",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload: RealtimePostgresChangesPayload<Bookmark>) => {
+            const newBookmark = payload.new as Bookmark;
+            setBookmarks((current) => {
+              if (current.some((b) => b.id === newBookmark.id)) {
+                return current;
+              }
+              return [newBookmark, ...current];
+            });
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "bookmarks",
+          },
+          (payload: RealtimePostgresChangesPayload<Bookmark>) => {
+            const deletedId = (payload.old as any).id;
+            setBookmarks((current) =>
+              current.filter((bookmark) => bookmark.id !== deletedId),
+            );
+          },
+        )
+        .subscribe();
     }
 
-    fetchBookmarks();
+    setupRealtimeSubscription();
 
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel("bookmarks-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "bookmarks",
-        },
-        (payload: RealtimePostgresChangesPayload<Bookmark>) => {
-          const newBookmark = payload.new as Bookmark;
-          setBookmarks((current) => {
-            // Check if already exists to prevent duplicates
-            if (current.some((b) => b.id === newBookmark.id)) {
-              return current;
-            }
-            return [newBookmark, ...current];
-          });
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "bookmarks",
-        },
-        (payload: RealtimePostgresChangesPayload<Bookmark>) => {
-          const deletedBookmark = payload.old as Bookmark;
-          setBookmarks((current) =>
-            current.filter((bookmark) => bookmark.id !== deletedBookmark.id),
-          );
-        },
-      )
-      .subscribe();
-
+    // Cleanup
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [supabase]);
 

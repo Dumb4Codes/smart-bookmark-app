@@ -1,28 +1,31 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { AuthButton } from '@/components/AuthButton'
-import { BookmarkList } from '@/components/BookmarkList'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { AuthButton } from "@/components/AuthButton";
+import { BookmarkList } from "@/components/BookmarkList";
+import { AuthSync } from "@/components/AuthSync";
 
 export default async function Dashboard() {
-  const supabase = await createClient()
+  const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/')
+    redirect("/");
   }
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Header */}
+      <AuthSync />
+
+      {/* Header - Mobile Optimized */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-600 rounded-lg">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-lg flex-shrink-0">
                 <svg
-                  className="w-6 h-6 text-white"
+                  className="w-5 h-5 sm:w-6 sm:h-6 text-white"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -35,7 +38,9 @@ export default async function Dashboard() {
                   />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold text-gray-900">My Bookmarks</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
+                My Bookmarks
+              </h1>
             </div>
             <AuthButton mode="signout" email={user.email} />
           </div>
@@ -43,9 +48,9 @@ export default async function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <BookmarkList />
       </div>
     </main>
-  )
+  );
 }

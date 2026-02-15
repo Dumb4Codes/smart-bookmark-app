@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Bookmark } from '@/lib/types'
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Bookmark } from "@/lib/types";
 
 interface BookmarkCardProps {
-  bookmark: Bookmark
-  onDelete: (message: string) => void
-  onError: (message: string) => void
+  bookmark: Bookmark;
+  onDelete: (message: string) => void;
+  onError: (message: string) => void;
 }
 
 export function BookmarkCard({
@@ -15,71 +15,72 @@ export function BookmarkCard({
   onDelete,
   onError,
 }: BookmarkCardProps) {
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const supabase = createClient()
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const supabase = createClient();
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this bookmark?')) return
+    if (!confirm("Are you sure you want to delete this bookmark?")) return;
 
-    setIsDeleting(true)
+    setIsDeleting(true);
 
     try {
-      const { error } = await supabase.from('bookmarks').delete().eq('id', bookmark.id)
+      const { error } = await supabase
+        .from("bookmarks")
+        .delete()
+        .eq("id", bookmark.id);
 
-      if (error) throw error
+      if (error) throw error;
 
-      onDelete('Bookmark deleted successfully')
+      onDelete("Bookmark deleted successfully");
     } catch (error) {
-      console.error('Error deleting bookmark:', error)
-      onError('Failed to delete bookmark. Please try again.')
+      console.error("Error deleting bookmark:", error);
+      onError("Failed to delete bookmark. Please try again.");
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   const handleCopyUrl = async () => {
     try {
-      await navigator.clipboard.writeText(bookmark.url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(bookmark.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error('Failed to copy URL:', error)
+      console.error("Failed to copy URL:", error);
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-5 border border-gray-100 animate-fade-in">
-      <div className="flex items-start justify-between gap-4">
+    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-4 sm:p-5 border border-gray-100 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 mb-2 truncate">
+          <h3 className="font-semibold text-gray-900 mb-2 break-words">
             {bookmark.title}
           </h3>
-
           <a
             href={bookmark.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all line-clamp-2"
+            className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all line-clamp-2 block"
           >
             {bookmark.url}
           </a>
-
           <p className="text-xs text-gray-500 mt-3">
             {formatDate(bookmark.created_at)}
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-end sm:self-start flex-shrink-0">
           <button
             onClick={handleCopyUrl}
             className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
